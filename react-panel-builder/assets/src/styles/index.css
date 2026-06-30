@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@tailwind utilities;
+
+:root {
+  --primary: #0160fe;
+  --light-white: #f1f5f9;
+  --light-text: #a0aec0;
+}
+
+body {
+  background-color: white;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+}
