@@ -32,6 +32,17 @@ Do not proceed past this gate until scope + environment are known.
 
 ---
 
+## Step 0.5 — Detect the system type(s)
+
+Read `references/system-types.md` and run its detection procedure on the in-scope surfaces.
+A system is often a **mix** (web UI + REST API + DB + a scheduled job) — identify every type
+in scope. The detected type(s) drive Stage 1 discovery/coverage and Stage 2 tool selection,
+evidence form, and which generic phases are N/A. **Do not default to "web app"**: a CLI,
+library/SDK, API-only service, ETL job, or message-queue consumer has no browser surface, so
+never reach for (or ask the user to install) browser automation for it.
+
+---
+
 ## Stage 1 — Plan & generate test cases
 
 1. Read `references/test-planning.md` and follow it, **bounded to the agreed scope**.
@@ -60,7 +71,7 @@ Ask the user explicitly: **"Run these test cases now?"** (Yes / No).
 ## Stage 2 — Execute & validate
 
 1. Read `references/test-execution.md` and follow it.
-2. Discover available tooling and pick per the order in that file (browser MCP → Playwright → Chrome → Puppeteer → Selenium for web UI; curl/HTTP for API; terminal for backend; DB client for data). If web UI testing is in scope and **no** browser automation is available, ask the user to install a browser MCP — do not fake UI results.
+2. Discover available tooling and pick **per the detected system type(s)** (see `references/system-types.md` and the tool order in `test-execution.md`): browser MCP → Playwright → Chrome → Puppeteer → Selenium for web UI; curl/HTTP for API; terminal + exit-code/stdio capture for CLI; unit harness for libraries; grpcurl/wscat for gRPC/WebSocket; mobile/Appium MCP for mobile; broker/emulator for queue/embedded. Only ask the user to install browser automation when a **web/Electron** surface is in scope and none exists — never for a non-UI system. Do not fake results for any type.
 3. Respect **prod safe-mode**: skip mutating/destructive/data-creating cases, mark them `SKIPPED (prod-safe)`.
 4. Save evidence (screenshots, response dumps, logs, query output) under `$RUN/evidence/`.
 5. Write into `$RUN/`:

@@ -15,10 +15,16 @@ A test is `PASS` only if validated through actual execution + evidence. Never as
 
 ## Environment discovery
 
-Inspect what's available: source code, terminal, browser automation, MCP tools, API/HTTP
-clients, database access, logs, CI/CD. Build the execution strategy from what exists.
+First confirm the **system type(s)** detected in planning (see `references/system-types.md`);
+they dictate which surfaces and tools are relevant. Then inspect what's available: source code,
+terminal, browser automation, MCP tools, API/HTTP clients, database access, logs, CI/CD. Build
+the execution strategy from the matched type(s) × what exists.
 
 ## Tool selection
+
+Select tools from the **detected type's row** in `references/system-types.md`, not reflexively
+from the web list below. For non-UI systems (CLI, library/SDK, API-only, ETL/job, queue,
+embedded) a browser is the wrong tool — do not ask the user to install one.
 
 - **Web UI** — preferred order: browser MCP → Playwright MCP → Chrome MCP → Puppeteer MCP →
   Selenium → any browser automation. If web UI testing is in scope and none exist, ask the

@@ -14,6 +14,11 @@ production-grade set of test cases for the **agreed scope** of the system.
 
 ## Phase 1 — Discovery
 
+First, **detect the system type(s)** in scope using `references/system-types.md` (web, REST/
+GraphQL/gRPC/WebSocket API, mobile, CLI, library/SDK, desktop/Electron, data-pipeline/ETL,
+scheduled job, message-queue/event-driven, embedded — often a mix). The detected type(s)
+drive which surfaces, test classes, and coverage phases apply, and which are N/A.
+
 Review the in-scope parts of the codebase: architecture, business logic, data/schema, APIs,
 roles & permissions, integrations & third-party services, background/scheduled jobs,
 validation rules, error handling, security controls, config & environment variables.
