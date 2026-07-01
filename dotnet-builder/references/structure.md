@@ -284,8 +284,76 @@ Rules:
 - Return `Task<IActionResult>`, async, method names end `Async`.
 - Route prefix `v1/api/<resource>`. Route constraints inline: `{id:int}`.
 - `[Authorize]` at class level; `[AllowAnonymous]` per-method for public endpoints (or omit `[Authorize]` on public controllers like auth).
-- Bind bodies with `[FromBody] SomeDto dto`, query with `[FromQuery]`.
+- Bind bodies with `[FromBody] SomeDto dto`. Bind **all list/filter params as one query object**: `[FromQuery] <Resource>PaginatedQuery query` — never a long list of loose `[FromQuery]` scalars. See "Query params & pagination" below.
 - Map entities → DTOs at the boundary. Never return entities.
+
+### Query params & pagination (non-negotiable)
+
+One base `PaginationQuery` class holds the shared page/search fields. Each resource that needs filters **extends it** and adds its own optional filter props. Controllers bind the whole thing with a single `[FromQuery] <Resource>PaginatedQuery query` param; the service applies search + each non-null filter, then paginates into the envelope.
+
+```csharp
+// Src/Models/Api/Dtos/RequestDtos.cs
+public class PaginationQuery
+{
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+    public string? Search { get; set; } = "";
+}
+
+// Extend per resource — add only that resource's filters
+public class EntityPaginatedQuery : PaginationQuery
+{
+    public int? Status { get; set; }
+    public int? OwnerId { get; set; }
+    public int? CategoryId { get; set; }
+}
+
+public class PaginatedResponse<T>
+{
+    public List<T> Items { get; set; }
+    public int Page { get; set; }
+    public int TotalCount { get; set; }
+}
+```
+
+Controller — bind the query object, delegate, wrap:
+```csharp
+[HttpGet]
+public async Task<ActionResult<Response<PaginatedResponse<EntityDto>>>> GetAll(
+    [FromQuery] EntityPaginatedQuery query)
+    => Ok(Response<PaginatedResponse<EntityDto>>.CreateSuccess(await _entityService.GetAllAsync(query)));
+```
+
+Service — build `IQueryable`, apply search, then **each filter only when non-null**, count, page:
+```csharp
+public async Task<PaginatedResponse<EntityDto>> GetAllAsync(EntityPaginatedQuery query)
+{
+    var queryable = dbContext.Entities.OrderBy(e => e.Id).AsQueryable();
+
+    var search = query.Search?.ToLower();
+    if (!string.IsNullOrEmpty(search))
+        queryable = queryable.Where(e => e.Name.ToLower().Contains(search));
+
+    if (query.Status != null)     queryable = queryable.Where(e => e.Status == query.Status);
+    if (query.OwnerId != null)    queryable = queryable.Where(e => e.OwnerId == query.OwnerId);
+    if (query.CategoryId != null) queryable = queryable.Where(e => e.CategoryId == query.CategoryId);
+
+    var totalCount = await queryable.CountAsync();
+    var items = await queryable
+        .Skip((query.Page - 1) * query.PageSize)
+        .Take(query.PageSize)
+        .Select(e => EntityDto.FromEntity(e))   // or inline projection
+        .ToListAsync();
+
+    return new PaginatedResponse<EntityDto> { Items = items, Page = query.Page, TotalCount = totalCount };
+}
+```
+
+Rules:
+- **Never** take pagination/filters as loose scalar `[FromQuery]` params. One query object per list endpoint.
+- Base `PaginationQuery` = shared fields only. Filters live on the extending subclass, named `<Resource>PaginatedQuery`.
+- Nullable filter props (`int?`), applied conditionally (`if (x != null)`) so absent = no filter.
+- List endpoints return a pagination envelope (Items + Page + total). `PaginatedResponse<T>` (Items/Page/TotalCount) and `PagedResult<T>` above are the same role — pick **one** per project and stay consistent; match whichever an existing codebase already uses.
 
 ### Admin controllers
 
@@ -298,22 +366,19 @@ Live in `Src/Controllers/Admin/`, namespace `...Controllers.Admin`, role-gated:
 public class AdminCoursesController(AppDbContext db, CacheService cache) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> ListAsync(
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
-        [FromQuery] string? q = null, [FromQuery] string? sortBy = null,
-        [FromQuery] string? sortDirection = null)
+    public async Task<IActionResult> ListAsync([FromQuery] AdminCoursePaginatedQuery query)
     {
-        if (page < 1) page = 1;
-        if (pageSize < 1 || pageSize > 100) pageSize = 20;
-        var query = db.Courses.AsNoTracking().AsQueryable();
-        if (!string.IsNullOrWhiteSpace(q))
-            query = query.Where(c => EF.Functions.ILike(c.Name, $"%{q}%"));
+        var page = query.Page < 1 ? 1 : query.Page;
+        var pageSize = query.PageSize is < 1 or > 100 ? 20 : query.PageSize;
+        var q = db.Courses.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(query.Search))
+            q = q.Where(c => EF.Functions.ILike(c.Name, $"%{query.Search}%"));
         // sort switch, project, paginate → PagedResult<T>
     }
 }
 ```
 
-Admin-list convention: clamp `page`/`pageSize`, `AsNoTracking()`, `EF.Functions.ILike` for search, `sortBy`/`sortDirection` switch, return `PagedResult<T>`.
+Admin-list convention: bind a `<Resource>PaginatedQuery` (extends `PaginationQuery`, adds `SortBy`/`SortDirection` if needed), clamp `Page`/`PageSize`, `AsNoTracking()`, `EF.Functions.ILike` for search, `SortBy`/`SortDirection` switch, return `PagedResult<T>`.
 
 ---
 

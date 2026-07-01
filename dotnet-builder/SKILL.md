@@ -50,7 +50,8 @@ Entity (`Src/Models/Entities/`) → register `DbSet` + config in `AppDbContext` 
 ### 3. Apply the conventions (non-negotiable)
 - Controllers are **thin**; all logic in **services**. Both use primary-constructor injection.
 - **Throw** `ApiException.Create(status, msg)` for errors — never return ad-hoc error shapes. Middleware converts to the envelope.
-- Every response wrapped in `Response<T>.CreateSuccess(...)`; paginated lists use `PagedResult<T>`.
+- Every response wrapped in `Response<T>.CreateSuccess(...)`; paginated lists use the pagination envelope (`PagedResult<T>` / `PaginatedResponse<T>`).
+- **List/filter params bind as ONE query object**, never loose `[FromQuery]` scalars. Base `PaginationQuery` (Page/PageSize/Search) is extended per resource — `class <Resource>PaginatedQuery : PaginationQuery { int? Status; int? OwnerId; ... }` — and controllers take `[FromQuery] <Resource>PaginatedQuery query`. Service applies search + each non-null filter, then pages. See `references/structure.md` → "Query params & pagination".
 - Async everywhere, `...Async` method suffix. `Task<IActionResult>` actions.
 - Map entity → DTO at the boundary via static `FromEntity`; **never return entities**.
 - Enums persisted as strings (`HasConversion<string>()`); `CreatedAt` via `HasDefaultValueSql("NOW()")`; set `UpdatedAt = DateTime.UtcNow` on writes.
