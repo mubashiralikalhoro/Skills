@@ -348,12 +348,15 @@ Rules:
 
 ## 8. Entities
 
-`Src/Models/Entities/`, one file per table. Plain POCOs, EF conventions.
+`Src/Models/Entities/`, one file per table. Plain POCOs. **Put table name and indexes as data annotations on the entity class itself** (`[Table]`, `[Index]`) — not in `AppDbContext`.
 
 ```csharp
+[Table("courses")]
+[Index(nameof(TenantId), nameof(Code), IsUnique = true)]
 public class Course
 {
     public int Id { get; set; }                         // PK by convention
+    public int TenantId { get; set; }
     [MaxLength(255)] public required string Name { get; set; }
     [MaxLength(50)]  public required string Code { get; set; }
     [MaxLength(2000)] public string? Description { get; set; }   // nullable = optional column
@@ -366,6 +369,8 @@ public class Course
 
 Rules:
 - `int Id` primary key.
+- **`[Table("name")]`** on the class to set the DB table name (annotation, not fluent config).
+- **`[Index(nameof(A), nameof(B), IsUnique = true)]`** on the class for indexes / unique constraints (composite or single). Multiple `[Index]` attributes allowed. Filtered/partial indexes that annotations can't express stay in `OnModelCreating`.
 - `required` for non-null required columns; `?` nullable for optional.
 - `[MaxLength(n)]` on strings to size the DB column.
 - Enum properties typed as the enum (persisted as string — see DbContext).
@@ -376,7 +381,7 @@ Rules:
 
 ## 9. AppDbContext
 
-`Src/Utils/AppDbContext.cs`. Expose `DbSet` per entity, configure relationships/indexes/conversions in `OnModelCreating`.
+`Src/Utils/AppDbContext.cs`. Expose `DbSet` per entity, configure **relationships and conversions** in `OnModelCreating`. Table names and plain/unique indexes live as `[Table]`/`[Index]` annotations on the entity — keep them out of here. Only filtered/partial indexes annotations can't express stay in `OnModelCreating`.
 
 ```csharp
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
@@ -389,7 +394,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     {
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasIndex(u => u.Email).IsUnique();
+            // Plain/unique indexes → [Index] on the entity. Only filtered indexes here:
             entity.HasIndex(u => u.GoogleId).IsUnique().HasFilter("\"GoogleId\" IS NOT NULL");
 
             // Enums persisted as strings (not ints) — readable, migration-stable
@@ -421,7 +426,7 @@ Conventions:
 - **Enums → strings**: `entity.Property(x => x.Enum).HasConversion<string>()`.
 - **Timestamps**: `HasDefaultValueSql("NOW()")` for `CreatedAt`.
 - **Delete behavior**: `Cascade` for owned children, `SetNull` for optional FKs.
-- **Indexes**: `HasIndex`, `.IsUnique()`, partial via `.HasFilter(...)`.
+- **Indexes / table name**: as `[Index]`/`[Table]` annotations on the entity. Only filtered/partial indexes (`.HasFilter(...)`) that annotations can't express go here via `HasIndex`.
 - Seed data via `HasData` in `OnModelCreating` — **any seed change needs a new migration**.
 
 ---
@@ -464,7 +469,7 @@ Rules:
 ## 11. Auth
 
 ### JwtHandler (`Src/Utils/`)
-Generates tokens. Claims: `NameIdentifier` (user id), `Name`, `Email`, `Role`, plus custom claims. Reads `JWTSettings` from config.
+Generates tokens. Standard claims: `NameIdentifier` (user id), `Name`, `Email`, `Role`. Add custom claims only when the domain needs them.
 
 ```csharp
 public string GenerateToken(User user)
@@ -476,8 +481,7 @@ public string GenerateToken(User user)
         new(ClaimTypes.Email, user.Email),
         new(ClaimTypes.Role, user.Role.ToString())
     };
-    if (user.DomainId.HasValue)
-        claims.Add(new Claim(JwtClaims.DomainId, user.DomainId.Value.ToString()));
+    // Add project-specific custom claims here if needed (e.g. tenant/org id).
     // build SecurityTokenDescriptor with Issuer/Audience/Expires/HmacSha256, write token
 }
 ```
@@ -538,7 +542,8 @@ public static class UserRolesString                       // for [Authorize(Role
     public const string AdminRoles = SuperAdmin + "," + Admin;
 }
 
-public static class JwtClaims { public const string DomainId = "domain_id"; }
+// Custom JWT claim keys, only if the project uses any (example — not required):
+// public static class JwtClaims { public const string TenantId = "tenant_id"; }
 
 public enum UserStatus { Active = 0, Inactive = 1, Suspended = 2 }
 ```
