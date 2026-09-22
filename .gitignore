@@ -5,3 +5,10 @@ system-tester/autoloop
 # autoloop evidence (large; keep the skill itself)
 software-engineer/.autoloop/iters/
 software-engineer/.autoloop/snapshots/
+
+# python bytecode from skill scripts
+__pycache__/
+*.pyc
+
+# virtualenv symlinked from AiAgents/speaker
+.venv
