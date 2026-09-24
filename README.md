@@ -38,7 +38,7 @@ Claude picks a skill up automatically from its `description`, or you invoke it b
 | [the-designer](#the-designer) | Single-agent designer: picks the best installed design skills for the task and loads them together (component, page, site, PDF, deck…) |
 | [the-designer-team](#the-designer-team) | Multi-agent version: every installed design skill as a panel → blind critique → one Director-synthesized design. Token-heavy; explicit request only |
 | [website-info-collector](#website-info-collector) | Crawl a whole site with a browser into structured Markdown under `.website-info-collector/` |
-| [website-redesign](#website-redesign) | URL in, complete redesigned site out — collector + the-designer (or the-designer-team on request) + full build and QA |
+| [website-redesign](#website-redesign) | URL in, complete redesigned site out — collector + the-designer (or the-designer-team on request) + full build |
 
 ### How the design skills fit together
 
@@ -46,7 +46,7 @@ Every skill stands alone. Only `website-redesign` composes others:
 
 ```
 website-redesign ──uses──▶ website-info-collector   (crawl the original site)
-                 └─uses──▶ the-designer             (every design decision + design review)
+                 └─uses──▶ the-designer             (every design decision)
                            or the-designer-team     (only when the user explicitly asks)
 
 website-info-collector   standalone: crawl any site, no design knowledge
@@ -299,26 +299,18 @@ offline, no API keys.
 
 ### website-redesign
 
-Autonomous pipeline: a URL goes in, a complete redesigned website comes out — same company, same
-routes, same real content, reinvented experience. It is the **producer**; it makes no design
-decisions itself.
+Single-agent pipeline: a URL goes in, a complete redesigned website comes out — same company, same
+routes, same real content, reinvented experience. It is the **builder**; the-designer makes the
+design decisions (the-designer-team only when explicitly asked).
 
 ```
-collect (website-info-collector) → read all → brief → stack & scaffold every route
-→ design (the-designer, produce mode) → roll out every page → SEO/forms/a11y/perf
-→ build → site QA → design review (the-designer, review mode) → README → deliver
-
-(the-designer-team replaces the-designer in both steps only when the user explicitly asks)
+1 collect (website-info-collector, single session) → 2 brief → 3 scaffold every route
+→ 4 design (the-designer) → 5 build every page → 6 quick check → 7 README & deliver
 ```
 
-- Owns: `REDESIGN-BRIEF.md` (facts and content, no visual direction), framework choice, content
-  pipeline, every route at the same path, SEO, honest forms, accessibility and performance
-  engineering, motion implementation rules, full-site QA and delivery.
-- Hands the-designer the crawl + brief as an evidence pack; `DIRECTION.md` becomes the design
-  contract rolled out to every page.
-- QA re-runs the collector against the local dev server and diffs routes, content and metadata
-  against the original snapshot.
+- No subagents anywhere; the collector runs single-session. Snapshot files are read once, when needed.
+- `REDESIGN-BRIEF.md` holds facts and constraints only — no visual direction, no copied page content.
+- No QA pass: a quick load-and-look check of home + one page per template (390 / 1440 px).
+  Full QA/testing is a separate skill.
 - Hard rules: whole site on first delivery, real content only, no fake functionality, no design
-  questions. Design feedback is routed to the-designer; content/route/function feedback is handled
-  here. Requires website-info-collector and the-designer (the-designer-team only when the user
-  explicitly asks for it).
+  questions. Design feedback goes to the-designer; content/route/function feedback is handled here.

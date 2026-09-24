@@ -40,7 +40,7 @@ styles/        tokens (CSS variables) from DIRECTION.md, globals
 ```
 
 No giant page files; no copy-pasted UI. One source for nav + footer data. Component names and
-folders above are the default skeleton; the-designer may reshape components in step 5 — follow
+folders above are the default skeleton; the-designer may reshape components in step 4 — follow
 DIRECTION.md's component strategy.
 
 ## 3. Routing
@@ -113,5 +113,5 @@ What moves and how it feels is DIRECTION.md's call. How it is built is this skil
 - Never delay the LCP element: hero text/image paints immediately; animate from a visible state.
 - Reveal once; no infinite decorative loops; never hijack native scroll on mobile.
 - `prefers-reduced-motion: reduce` fully supported (Motion `MotionConfig reducedMotion="user"`, CSS
-  wrapped in `@media (prefers-reduced-motion: no-preference)`); verify by emulation in QA.
+  wrapped in `@media (prefers-reduced-motion: no-preference)`).
 - Heavy/3D sections: lazy-load on visibility with a static fallback.
