@@ -16,6 +16,12 @@ ln -s "$PWD/<skill-name>" ~/.claude/skills/<skill-name>
 ln -s "$PWD/<skill-name>" <project>/.claude/skills/<skill-name>
 ```
 
+Install every skill in this repo at once (symlinks, so `git pull` updates them):
+
+```bash
+for d in */; do [ -f "$d/SKILL.md" ] && ln -sfn "$PWD/${d%/}" ~/.claude/skills/"${d%/}"; done
+```
+
 Claude picks a skill up automatically from its `description`, or you invoke it by name.
 
 ## Skills
@@ -28,6 +34,25 @@ Claude picks a skill up automatically from its `description`, or you invoke it b
 | [software-engineer](#software-engineer) | Turn a vague product/feature idea into an implementation-ready Build Specification |
 | [system-tester](#system-tester) | Two-stage QA (plan test cases → execute with evidence) for systems **with** source code |
 | [system-qa](#system-qa) | Black-box QA for live systems with **no** source code, driven by a persistent knowledge base |
+| [talk-to-me](#talk-to-me) | Speak replies aloud with a local offline TTS engine; latches on until turned off |
+| [the-designer](#the-designer) | Universal design team: every installed design skill as a panel → blind critique → one Director-synthesized design (component, page, site, PDF, deck…) |
+| [website-info-collector](#website-info-collector) | Crawl a whole site with a browser into structured Markdown under `.website-info-collector/` |
+| [website-redesign](#website-redesign) | URL in, complete redesigned site out — collector + the-designer + full build and QA |
+
+### How the design skills fit together
+
+Every skill stands alone. Only `website-redesign` composes others:
+
+```
+website-redesign ──uses──▶ website-info-collector   (crawl the original site)
+                 └─uses──▶ the-designer             (every design decision + design review)
+
+website-info-collector   standalone: crawl any site, no design knowledge
+the-designer             standalone: design anything, never crawls, never calls a pipeline
+```
+
+`the-designer`'s discovery excludes any skill that invokes it, so it can never seat
+`website-redesign` as a panelist (no recursion).
 
 ---
 
@@ -184,3 +209,92 @@ actual, evidence, and any cause is labeled a hypothesis.
 
 `references/` covers the interview guide, surface types, the `system-info.md` template, and test
 planning/execution.
+
+---
+
+### website-info-collector
+
+Crawls a website page by page with a real browser (`agent-browser`, or Playwright MCP as
+fallback) and writes a structured Markdown picture of it to `.website-info-collector/`.
+
+- One in-page extractor (`references/extract.js`) returns each page's metadata, headings,
+  ordered content blocks, navs, footer, links, `src`s, forms, JSON-LD and contact links.
+- Same-site links go into `queue.json`; URLs are normalized and checked against `seen`, so no
+  page is visited twice. Seeds from `sitemap.xml`; respects robots.txt.
+- Output: `pages/<url path>.md` per page plus `site.md`, `sitemap.md`, `navigation.md`,
+  `links.md`, `assets.md`, `forms.md`, `metadata.md`, `errors.md`, `README.md`.
+- Read-only: never submits forms or logs in.
+- Standalone: it only collects. Parallel crawl sessions write to separate temp files.
+
+---
+
+### the-designer
+
+Universal multi-specialist design orchestrator — a design **team**, not a single designer. It
+carries no aesthetic rules of its own: every run it discovers the design skills installed *right
+now* and uses them as an independent panel. Works on anything designed: a single component, a
+page, a website or app, a dashboard, a mobile screen, a PDF or document, a deck, a poster or social
+graphic, an email, a design system, a Figma file.
+
+```
+discover → evidence → seat panel → independent exploration → blind cross-critique
+→ Design Director → produce → panel review → refine → polish → deliver
+```
+
+- **Dynamic discovery** — `scripts/discover_design_skills.py` scans project, user and
+  enabled-plugin skills and tags each from its own description (no hardcoded names), so a newly
+  installed design skill joins the next run. Buckets: design specialists, media renderers (PDF,
+  deck, document, graphic), framework aids, capture tools, and excluded callers.
+- **Panel** — relevant skills are seated per artifact type as *direction specialists* (each commits
+  to a distinct territory and ships a prototype) or *lens specialists* (UX, a11y, typography,
+  motion, design system, frontend, responsive). Panel size scales with the task; mandatory roles no
+  skill covers get a house specialist.
+- **Blind cross-critique** — anonymized directions and idea cards; critics including a Slop Hunter
+  tag every idea (strong, generic, AI-look, perf/a11y risk, conflicts…).
+- **Design Director** — picks one spine direction, takes the best idea per domain, re-expresses it
+  in the spine's language, enforces anti-committee budgets, logs every rejection. Output:
+  `DIRECTION.md` (direction, page/screen/slide strategy, component strategy, implementation guidance).
+- Three modes: **produce** (default), **direction** (concept only), **review** (critique and fix an
+  existing design). Produces in the target medium, then a parallel panel review → refine loop and
+  a polish pass. Autonomous: no routine design questions; feedback becomes a constraint.
+
+Evidence comes from the material itself (code, files, live pages, screenshots) or from an evidence
+pack a caller hands it. Run artifacts live in `.the-designer/<timestamp>/`.
+
+---
+
+### talk-to-me
+
+Speaks replies aloud through a resident local TTS daemon (Kokoro-82M on Apple Silicon) — fully
+offline, no API keys.
+
+- **Latching mode:** "talk to me" turns it on and every following reply is spoken until "stop
+  talking". State is per session, stored under `~/.talk-to-me/modes/`, so it survives context loss.
+- Spoken lines are the substance of the reply in natural, casual prose — no tables, code or paths.
+- Shift interrupts all audio globally; the monitor is blocked as an output device.
+- `scripts/setup.sh` wires the venv; engine notes in `references/engine.md`.
+
+---
+
+### website-redesign
+
+Autonomous pipeline: a URL goes in, a complete redesigned website comes out — same company, same
+routes, same real content, reinvented experience. It is the **producer**; it makes no design
+decisions itself.
+
+```
+collect (website-info-collector) → read all → brief → stack & scaffold every route
+→ design (the-designer, produce mode) → roll out every page → SEO/forms/a11y/perf
+→ build → site QA → design review (the-designer, review mode) → README → deliver
+```
+
+- Owns: `REDESIGN-BRIEF.md` (facts and content, no visual direction), framework choice, content
+  pipeline, every route at the same path, SEO, honest forms, accessibility and performance
+  engineering, motion implementation rules, full-site QA and delivery.
+- Hands the-designer the crawl + brief as an evidence pack; `DIRECTION.md` becomes the design
+  contract rolled out to every page.
+- QA re-runs the collector against the local dev server and diffs routes, content and metadata
+  against the original snapshot.
+- Hard rules: whole site on first delivery, real content only, no fake functionality, no design
+  questions. Design feedback is routed to the-designer; content/route/function feedback is handled
+  here. Requires both website-info-collector and the-designer.

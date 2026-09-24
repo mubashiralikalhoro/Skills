@@ -12,3 +12,4 @@ __pycache__/
 
 # virtualenv symlinked from AiAgents/speaker
 .venv
+node_modules
