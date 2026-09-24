@@ -29,6 +29,7 @@ Claude picks a skill up automatically from its `description`, or you invoke it b
 | Skill | What it does |
 |---|---|
 | [autoloop](#autoloop) | Autonomous improvement loop for any system, judged against a frozen rubric |
+| [create-image-gemini](#create-image-gemini) | Generate/edit images with Gemini (Nano Banana / Pro / Imagen); live model list, Claude picks by complexity |
 | [dotnet-builder](#dotnet-builder) | Scaffold/edit ASP.NET Core Web API backends in one fixed layered structure |
 | [react-panel-builder](#react-panel-builder) | Build React admin panels from a fixed Vite + TS + Tailwind template |
 | [software-engineer](#software-engineer) | Turn a vague product/feature idea into an implementation-ready Build Specification |
@@ -84,6 +85,21 @@ Works on code, websites, marketing flows, docs, workflows — anything with an o
 landing page", "find weak spots and fix them in a loop".
 
 Inspired by `karpathy/autoresearch`, but with target and metric made pluggable.
+
+---
+
+### create-image-gemini
+
+Generates and edits images through the Gemini API — Nano Banana, Nano Banana Pro, Imagen.
+
+- **Key once:** asks for a Gemini API key on first use, validates it, saves it to
+  `~/.config/create-image-gemini/config.json` (mode 600). `$GEMINI_API_KEY` overrides.
+- **Live models:** every run lists the image models available to the key — no hardcoded ids.
+- **Model choice:** the user's named model wins; otherwise Claude picks by complexity (flash tier
+  for simple images, pro tier for legible text / dense layouts / 4K / multi-reference), or asks
+  the user when they want to choose.
+- `scripts/gemini_image.py` — stdlib-only (`key`, `models`, `generate`); images land in
+  `./generated-images/`.
 
 ---
 

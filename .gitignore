@@ -13,3 +13,10 @@ __pycache__/
 # virtualenv symlinked from AiAgents/speaker
 .venv
 node_modules
+# secrets: API keys live outside the repo (~/.config/create-image-gemini/). Never commit them.
+.env
+*.env
+!*.env.example
+create-image-gemini/**/config.json
+*gemini*key*
+generated-images/
