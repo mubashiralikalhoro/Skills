@@ -4,7 +4,7 @@
 - URL: <original URL>
 - Snapshot: `.website-info-collector/` (crawled <date>, <n> pages) — source of truth for original content
 - Brief: `.website-info-collector/REDESIGN-BRIEF.md`
-- Design direction: `.the-designer/<run>/DIRECTION.md` (by the-designer's specialist panel)
+- Design direction: `.the-designer/<run>/DIRECTION.md` (or `.the-designer-team/<run>/` when the team version was used)
 
 ## Redesign direction
 <Brand concept from DIRECTION.md>.

@@ -125,7 +125,7 @@ Scale to the artifact; relevance, not count, is the limit.
 | `platform-bound` | Seat only if the target is on that platform or brand (e.g. a Shopify admin app, an Anthropic-branded page). Otherwise skip. A skill that only *outputs* in a platform's format (e.g. a DESIGN.md meant for a design tool) may still be seated for its design thinking. |
 | `needs-image-gen` | Seat only if an image-generation tool is actually available in this session. |
 | `static-art` | Relevant for graphics, posters, covers and illustration; skip for interface work unless such a visual is in scope. Many UI skills mention posters in passing; judge by the main purpose. |
-| `excluded` bucket | Never seat. These skills invoke the-designer themselves (e.g. a full-site pipeline). |
+| `excluded` bucket | Never seat. These skills invoke the-designer-team themselves (e.g. a full-site pipeline). |
 | Workflow skill that builds a whole product end-to-end | Not a panelist; it is a caller, not a specialist. |
 | Non-design skill that slipped through | Skip with reason. |
 | `media` bucket | Not panelists. Renderers for step 7 (PDF, deck, document, graphic). |

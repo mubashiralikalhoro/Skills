@@ -1,6 +1,6 @@
 ---
 name: website-redesign
-description: Autonomously redesign an existing live website into a complete, modern, brand-specific new site. A pipeline over two skills — website-info-collector crawls the original (pages, content, routes, forms, SEO, assets), the-designer's panel of design specialists decides the design — while this skill owns the build - rebuild EVERY page (same routes, same real content) with SEO, forms, accessibility and performance, full-site QA and a final design review. Zero design questions. Use when the user gives a website URL and asks to redesign, rebuild, modernize, reimagine, refresh, "make premium/futuristic", or "bring into the future" a site — optionally naming a framework (Next.js, Astro, Vue, Nuxt, Svelte). Also for feedback on a redesign built with this skill ("I don't like it", "homepage is boring", "animations are too much").
+description: Autonomously redesign an existing live website into a complete, modern, brand-specific new site. A pipeline over two skills — website-info-collector crawls the original (pages, content, routes, forms, SEO, assets), the-designer decides the design (the multi-agent the-designer-team only when the user explicitly asks for it) — while this skill owns the build - rebuild EVERY page (same routes, same real content) with SEO, forms, accessibility and performance, full-site QA and a final design review. Zero design questions. Use when the user gives a website URL and asks to redesign, rebuild, modernize, reimagine, refresh, "make premium/futuristic", or "bring into the future" a site — optionally naming a framework (Next.js, Astro, Vue, Nuxt, Svelte). Also for feedback on a redesign built with this skill ("I don't like it", "homepage is boring", "animations are too much").
 ---
 
 # Website Redesign — Autonomous pipeline
@@ -17,11 +17,16 @@ specialist work, each staying independent:
 | Skill | Owns |
 |---|---|
 | **website-info-collector** | Crawling the original site into `.website-info-collector/` |
-| **the-designer** | Every design decision: direction, design system, key templates, design review |
+| **the-designer** (or **the-designer-team** if explicitly requested) | Every design decision: direction, design system, key templates, design review |
 | **website-redesign** (this) | Brief, stack, content pipeline, every route, SEO, forms, a11y/perf engineering, full-site QA, README, delivery |
 
 Both skills are required. If either is not installed, stop and tell the user which one to install —
 do not substitute an improvised crawler or improvised design.
+
+**Which designer.** Use **the-designer** (single agent, low token cost) by default. Use
+**the-designer-team** (multi-agent panel) only when the user explicitly asks for it. Both have the same
+modes and the same `DIRECTION.md` contract; the team's run folder is `.the-designer-team/`. Use the
+chosen one for steps 5, 10 and design feedback — "the-designer" below means whichever was chosen.
 
 ## Prime directive — do the work first, ask later
 
@@ -115,7 +120,7 @@ against the original snapshot. Fix everything, re-shoot.
 ### 10. Design review — the-designer again
 
 Invoke **the-designer** in **review** mode on the whole built site, pointing it at its previous run
-folder and DIRECTION.md, with the QA captures of every template. It runs its panel review → refine
+folder and DIRECTION.md, with the QA captures of every template. It runs its review → refine
 loop and polish pass across all templates (not only the key screens). Re-run site QA on the routes
 it touched.
 

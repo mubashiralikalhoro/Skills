@@ -18,10 +18,8 @@ Output buckets:
   excluded   skills that themselves invoke this skill (seating them would recurse)
 Each entry carries capability tags and flags (legacy, needs-image-gen, platform-bound, static-art).
 
-Formats: compact (default; one line per skill + short description, cheapest to read), table, json.
-
 Usage:
-  discover_design_skills.py [--project DIR] [--extra-root DIR ...] [--format compact|table|json]
+  discover_design_skills.py [--project DIR] [--extra-root DIR ...] [--format table|json]
 """
 import argparse
 import json
@@ -145,8 +143,6 @@ def collect(project, extra_roots):
         found.setdefault(invoke, dict(
             name=name, invoke=invoke, source=source,
             path=str((skill_dir / "SKILL.md").resolve()),
-            kb=round((skill_dir / "SKILL.md").stat().st_size / 1024),
-            refs=sum(1 for f in skill_dir.rglob("*.md") if f.name != "SKILL.md"),
             description=(meta.get("description") or "")[:700]))
 
     for d in skill_dirs_under(project / ".claude/skills"):
@@ -212,24 +208,14 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--project", default=".", help="project root (project skills + settings)")
     ap.add_argument("--extra-root", action="append", default=[], help="additional skill root")
-    ap.add_argument("--format", choices=["compact", "table", "json"], default="compact")
+    ap.add_argument("--format", choices=["table", "json"], default="table")
     a = ap.parse_args()
 
-    self_name = parse_frontmatter(Path(__file__).resolve().parent.parent / "SKILL.md").get("name", "the-designer")
+    self_name = parse_frontmatter(Path(__file__).resolve().parent.parent / "SKILL.md").get("name", "the-designer-team")
     out = classify(collect(Path(a.project).resolve(), a.extra_root), self_name)
     if a.format == "json":
         json.dump(out, sys.stdout, indent=2)
         print()
-        return
-    if a.format == "compact":
-        for bucket, items in out.items():
-            print(f"## {bucket} ({len(items)})")
-            for e in items:
-                flags = f" !{','.join(e['flags'])}" if e["flags"] else ""
-                why = f" ({e['reason']})" if e.get("reason") else ""
-                desc = " ".join(e["description"].split())[:160]
-                print(f"- {e['invoke']} [{','.join(e['tags'])}]{flags} {e['kb']}KB+{e['refs']}refs{why}"
-                      f" | {e['path']}\n  {desc}")
         return
     for bucket, items in out.items():
         print(f"\n## {bucket} ({len(items)})")

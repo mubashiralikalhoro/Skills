@@ -35,9 +35,10 @@ Claude picks a skill up automatically from its `description`, or you invoke it b
 | [system-tester](#system-tester) | Two-stage QA (plan test cases → execute with evidence) for systems **with** source code |
 | [system-qa](#system-qa) | Black-box QA for live systems with **no** source code, driven by a persistent knowledge base |
 | [talk-to-me](#talk-to-me) | Speak replies aloud with a local offline TTS engine; latches on until turned off |
-| [the-designer](#the-designer) | Universal design team: every installed design skill as a panel → blind critique → one Director-synthesized design (component, page, site, PDF, deck…) |
+| [the-designer](#the-designer) | Single-agent designer: picks the best installed design skills for the task and loads them together (component, page, site, PDF, deck…) |
+| [the-designer-team](#the-designer-team) | Multi-agent version: every installed design skill as a panel → blind critique → one Director-synthesized design. Token-heavy; explicit request only |
 | [website-info-collector](#website-info-collector) | Crawl a whole site with a browser into structured Markdown under `.website-info-collector/` |
-| [website-redesign](#website-redesign) | URL in, complete redesigned site out — collector + the-designer + full build and QA |
+| [website-redesign](#website-redesign) | URL in, complete redesigned site out — collector + the-designer (or the-designer-team on request) + full build and QA |
 
 ### How the design skills fit together
 
@@ -46,13 +47,15 @@ Every skill stands alone. Only `website-redesign` composes others:
 ```
 website-redesign ──uses──▶ website-info-collector   (crawl the original site)
                  └─uses──▶ the-designer             (every design decision + design review)
+                           or the-designer-team     (only when the user explicitly asks)
 
 website-info-collector   standalone: crawl any site, no design knowledge
-the-designer             standalone: design anything, never crawls, never calls a pipeline
+the-designer             standalone, single agent: design anything, never crawls, never calls a pipeline
+the-designer-team        standalone, multi-agent panel: same contract, far more tokens
 ```
 
-`the-designer`'s discovery excludes any skill that invokes it, so it can never seat
-`website-redesign` as a panelist (no recursion).
+Each designer's discovery excludes any skill that invokes it, so neither loads the other or
+`website-redesign` (no recursion).
 
 ---
 
@@ -230,6 +233,23 @@ fallback) and writes a structured Markdown picture of it to `.website-info-colle
 
 ### the-designer
 
+Single-agent designer — a simple router with no design rules of its own. Every run it discovers the
+design skills installed *right now*, picks the best ones for the current task (often several at
+once: one that sets the look plus the domain skills the task needs) and loads them to do the
+design. No subagents, so a fraction of the tokens of the team version.
+
+```
+intake → evidence → discover → pick & load skills → DIRECTION.md → produce → check → deliver
+```
+
+- Same discovery script as the team version (compact output by default).
+- Same three modes (**produce**, **direction**, **review**) and the same `DIRECTION.md` contract, so
+  `website-redesign` works with either. Run artifacts live in `.the-designer/<timestamp>/`.
+
+---
+
+### the-designer-team
+
 Universal multi-specialist design orchestrator — a design **team**, not a single designer. It
 carries no aesthetic rules of its own: every run it discovers the design skills installed *right
 now* and uses them as an independent panel. Works on anything designed: a single component, a
@@ -259,7 +279,8 @@ discover → evidence → seat panel → independent exploration → blind cross
   a polish pass. Autonomous: no routine design questions; feedback becomes a constraint.
 
 Evidence comes from the material itself (code, files, live pages, screenshots) or from an evidence
-pack a caller hands it. Run artifacts live in `.the-designer/<timestamp>/`.
+pack a caller hands it. Run artifacts live in `.the-designer-team/<timestamp>/`. Multi-agent and
+token-heavy — used only when explicitly requested; `the-designer` is the default.
 
 ---
 
@@ -286,6 +307,8 @@ decisions itself.
 collect (website-info-collector) → read all → brief → stack & scaffold every route
 → design (the-designer, produce mode) → roll out every page → SEO/forms/a11y/perf
 → build → site QA → design review (the-designer, review mode) → README → deliver
+
+(the-designer-team replaces the-designer in both steps only when the user explicitly asks)
 ```
 
 - Owns: `REDESIGN-BRIEF.md` (facts and content, no visual direction), framework choice, content
@@ -297,4 +320,5 @@ collect (website-info-collector) → read all → brief → stack & scaffold eve
   against the original snapshot.
 - Hard rules: whole site on first delivery, real content only, no fake functionality, no design
   questions. Design feedback is routed to the-designer; content/route/function feedback is handled
-  here. Requires both website-info-collector and the-designer.
+  here. Requires website-info-collector and the-designer (the-designer-team only when the user
+  explicitly asks for it).

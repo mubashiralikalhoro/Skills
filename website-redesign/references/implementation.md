@@ -36,7 +36,7 @@ lib/           seo helpers, utils
 public/        reused/optimized brand assets
 styles/        tokens (CSS variables) from DIRECTION.md, globals
 .website-info-collector/   original snapshot — keep
-.the-designer/             design run (DIRECTION.md) — keep out of commits
+.the-designer/             design run (DIRECTION.md; .the-designer-team/ if the team ran) — keep out of commits
 ```
 
 No giant page files; no copy-pasted UI. One source for nav + footer data. Component names and
