@@ -29,6 +29,7 @@ Claude picks a skill up automatically from its `description`, or you invoke it b
 | Skill | What it does |
 |---|---|
 | [autoloop](#autoloop) | Autonomous improvement loop for any system, judged against a frozen rubric |
+| [code-audit](#code-audit) | Read-only full-codebase audit for any stack: bugs, security, data, concurrency, perf, deploy — severity-rated, evidence-backed report |
 | [create-image-gemini](#create-image-gemini) | Generate/edit images with Gemini (Nano Banana / Pro / Imagen); live model list, Claude picks by complexity |
 | [dotnet-builder](#dotnet-builder) | Scaffold/edit ASP.NET Core Web API backends in one fixed layered structure |
 | [react-panel-builder](#react-panel-builder) | Build React admin panels from a fixed Vite + TS + Tailwind template |
@@ -85,6 +86,31 @@ Works on code, websites, marketing flows, docs, workflows — anything with an o
 landing page", "find weak spots and fix them in a loop".
 
 Inspired by `karpathy/autoresearch`, but with target and metric made pluggable.
+
+---
+
+### code-audit
+
+Deep, **read-only** audit of a whole codebase in any language or project kind — web backend or
+frontend, mobile, CLI, library, data/ML pipeline, IaC, embedded, smart contracts, monorepos.
+Nothing in the project is changed: no edits, installs, builds, or state-changing git commands;
+secrets are reported by location and type, never by value.
+
+- **Phase 0 — scope:** whole repo by default; skips vendored/generated code.
+- **Phase 1 — map:** detect every stack (`references/stack-hotspots.md`), then entry points,
+  components, data stores, trust boundaries, config/deploy, tests. Large repos fan out to
+  read-only subagents per component.
+- **Phase 2 — trace** the 5–15 most important flows end-to-end across files.
+- **Phase 3 — sweep** 19 categories in `references/checklist.md` (correctness, security, auth,
+  validation, DB, API/errors, concurrency, performance, leaks, state, frontend, types, dead code,
+  config, dependencies, deploy, observability, failure modes, maintainability); N/A marked.
+- **Phase 4 — verify** each finding: guard elsewhere? concrete failure scenario? confidence
+  (`Confirmed` / `Likely` / `Needs verification`) and severity from a fixed rubric.
+- **Phase 5 — report** (`references/report-format.md`): per finding severity, location, what's
+  wrong, why, how it happens in production, fix — plus what's already done right, grouped views
+  (critical/high/medium-low/security/performance/architecture), and fixes in priority order.
+
+Fixes are only applied if the user asks afterwards.
 
 ---
 
