@@ -33,6 +33,7 @@ Claude picks a skill up automatically from its `description`, or you invoke it b
 | [create-image-gemini](#create-image-gemini) | Generate/edit images with Gemini (Nano Banana / Pro / Imagen); live model list, Claude picks by complexity |
 | [dot-deploy-creator](#dot-deploy-creator) | Write a VPS `.deploy.sh` (pull → install → Prisma → build → pm2 / systemd / docker / `/var/www`) for any Node, Next.js, Vite, .NET or Python repo |
 | [dotnet-builder](#dotnet-builder) | Scaffold/edit ASP.NET Core Web API backends in one fixed layered structure |
+| [nodejs-builder](#nodejs-builder) | Scaffold/edit Express + TypeScript backends via `npx express-typescript-app`; every handler through `createController`, errors thrown as `ApiError` |
 | [react-panel-builder](#react-panel-builder) | Build React admin panels from a fixed Vite + TS + Tailwind template |
 | [software-engineer](#software-engineer) | Turn a vague product/feature idea into an implementation-ready Build Specification |
 | [system-tester](#system-tester) | Two-stage QA (plan test cases → execute with evidence) for systems **with** source code |
@@ -171,6 +172,27 @@ Non-negotiable conventions:
 Handles three task types: new project (scaffold checklist), adding to an existing project
 (entity → DbContext → migration → service → DTOs → controller), and fixing/refactoring inside the
 correct layer. Matches an existing codebase's style rather than fighting it.
+
+---
+
+### nodejs-builder
+
+Builds and edits Express + TypeScript backends in one shape.
+
+- **New project** only when none exists (`package.json` with `express` + `src/app.ts`):
+  `npx -y express-typescript-app <app-name>`, then adds `"rootDir": "./src"` to `tsconfig.json`
+  (TypeScript 6+ won't build without it), deletes `src/controllers/` (sample weather controller)
+  and `src/models/`, and serves a health check at `/` in `src/app.ts`.
+- Ensures `src/utils/index.ts` has `ApiError`, `createController`, `createResponse` (copied from
+  `assets/src/utils/index.ts`, merged if the file already exists).
+- Every route handler is wrapped in `createController` and just returns data → `200 {data,
+  message, status}`. Failures are `throw new ApiError(msg, status)`; anything else becomes a logged
+  500. No per-handler try/catch or `res.status(4xx)` branches — checks live once in `getXOrThrow`
+  style helpers.
+- No `src/controllers/` or `src/models/` (removed right after scaffolding). Each resource is one
+  file, `src/routes/<resource>-routes.ts`, holding the router and its handlers together and
+  default-exporting the `Router`, mounted in `src/app.ts`. Heavier logic goes in
+  `src/services/`. Verified with `npm run build` + curl.
 
 ---
 
