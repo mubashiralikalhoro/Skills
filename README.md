@@ -31,6 +31,7 @@ Claude picks a skill up automatically from its `description`, or you invoke it b
 | [autoloop](#autoloop) | Autonomous improvement loop for any system, judged against a frozen rubric |
 | [code-audit](#code-audit) | Read-only full-codebase audit for any stack: bugs, security, data, concurrency, perf, deploy — severity-rated, evidence-backed report |
 | [create-image-gemini](#create-image-gemini) | Generate/edit images with Gemini (Nano Banana / Pro / Imagen); live model list, Claude picks by complexity |
+| [dot-deploy-creator](#dot-deploy-creator) | Write a VPS `.deploy.sh` (pull → install → Prisma → build → pm2 / systemd / docker / `/var/www`) for any Node, Next.js, Vite, .NET or Python repo |
 | [dotnet-builder](#dotnet-builder) | Scaffold/edit ASP.NET Core Web API backends in one fixed layered structure |
 | [react-panel-builder](#react-panel-builder) | Build React admin panels from a fixed Vite + TS + Tailwind template |
 | [software-engineer](#software-engineer) | Turn a vague product/feature idea into an implementation-ready Build Specification |
@@ -126,6 +127,23 @@ Generates and edits images through the Gemini API — Nano Banana, Nano Banana P
   the user when they want to choose.
 - `scripts/gemini_image.py` — stdlib-only (`key`, `models`, `generate`); images land in
   `./generated-images/`.
+
+---
+
+### dot-deploy-creator
+
+Creates the `.deploy.sh` that is run as `bash .deploy.sh` from the project folder on the VPS
+(`/root/deployments/<project>`). The script is gitignored on the server, so `git pull` never
+rewrites it mid-run.
+
+- **Detects** every app in the repo: Node API (Express/Nest/Strapi), Next.js, React/Vite static
+  SPA, ASP.NET Core, Python (Docker or systemd), and Prisma.
+- **Layouts:** single app, fullstack (backend + frontend, one script, pull once), or monorepo
+  parent that runs each app's own `.deploy.sh`.
+- **Fixed order:** `git restore .` → `git pull` → install → `prisma generate` → migrate
+  (`migrate deploy` / `db push` / the repo's migrate script) → build → pm2 restart-or-start /
+  `systemctl restart` / `docker compose up` / copy `dist` to `/var/www`.
+- `references/stacks.md`: the detection table and a verbatim block for each stack.
 
 ---
 
