@@ -33,6 +33,7 @@ Claude picks a skill up automatically from its `description`, or you invoke it b
 | [create-image-gemini](#create-image-gemini) | Generate/edit images with Gemini (Nano Banana / Pro / Imagen); live model list, Claude picks by complexity |
 | [dot-deploy-creator](#dot-deploy-creator) | Write a VPS `.deploy.sh` (pull → install → Prisma → build → pm2 / systemd / docker / `/var/www`) for any Node, Next.js, Vite, .NET or Python repo |
 | [dotnet-builder](#dotnet-builder) | Scaffold/edit ASP.NET Core Web API backends in one fixed layered structure |
+| [incremental-changes](#incremental-changes) | Make and verify changes so the old version keeps working next to the new one on a shared DB (expand → migrate → contract, mixed-version + rollback check) |
 | [nodejs-builder](#nodejs-builder) | Scaffold/edit Express + TypeScript backends via `npx express-typescript-app`; every handler through `createController`, errors thrown as `ApiError` |
 | [react-panel-builder](#react-panel-builder) | Build React admin panels from a fixed Vite + TS + Tailwind template |
 | [software-engineer](#software-engineer) | Turn a vague product/feature idea into an implementation-ready Build Specification |
@@ -172,6 +173,35 @@ Non-negotiable conventions:
 Handles three task types: new project (scaffold checklist), adding to an existing project
 (entity → DbContext → migration → service → DTOs → controller), and fixing/refactoring inside the
 correct layer. Matches an existing codebase's style rather than fighting it.
+
+---
+
+### incremental-changes
+
+Keeps every change backward compatible — DB, backend logic, API, workers, web and mobile clients —
+while the old version (v1) and old clients are still running. Default model:
+v1 and v2 run at once on the **same** database, Redis and queues (rolling deploy, beta next to
+production), migrations run before v2 is live, old mobile apps keep calling v2, and rollback means
+v1 on whatever v2 changed. Only proof from the repo or the user turns that off.
+
+- **7 rules, each with hints** (not a hard-coded catalog): know the callers and which versions
+  are still in use (old clients stay forever unless a force-update is enforced), walk the flows
+  end to end both ways, existing contracts only grow, existing behavior stays for old callers,
+  shared state stays readable both ways, rollback needs no manual step, only the user waives a
+  rule. Build mode never breaks one; Verify mode reports any break as at least BREAKING.
+- **Build mode** (implementing a change): finds every consumer, splits the change into
+  expand → migrate → contract, ships only the phase safe while v1 runs, writes later phases as a
+  follow-up note (never into the auto-applied migrations folder), then verifies its own diff.
+  `references/patterns.md` has example sequences (renames, required columns, enums, response
+  shapes, validation/pagination changes, env vars, cache keys, queue payloads, JWT claims).
+- **Verify mode** (read-only): git state incl. unpushed commits → deployment model → 15-area
+  `references/checklist.md` (DB, migration mechanics, ORM, API, data meaning, cross-version
+  reads/writes, config, auth, cache, queues, integrations, clients and flows, hidden behavior, deploy order,
+  rollback) → report in `references/report-format.md`: verdict (SAFE / SAFE WITH CONDITIONS /
+  WARNING / BREAKING / CRITICAL), findings, mixed-version PASS/FAIL/NOT VERIFIED table, deploy
+  recommendation.
+- Rationalization table from baseline tests ("fine for beta", "short outage", "backup and fix
+  forward", "ship the app update with it").
 
 ---
 
