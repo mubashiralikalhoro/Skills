@@ -94,7 +94,11 @@ def current_output() -> tuple[int | None, str]:
         index = sd.default.device[1]
         if index is None or index < 0:
             return None, "none"
-        return index, sd.query_devices(index)["name"]
+        dev = sd.query_devices(index)
+        # A stale index after a device re-scan can land on an input-only device.
+        if dev.get("max_output_channels", 0) <= 0:
+            return None, "none"
+        return index, dev["name"]
     except Exception:
         return None, "unknown"
 
