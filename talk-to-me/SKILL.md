@@ -7,6 +7,28 @@ description: Speak replies aloud through a local offline TTS engine (Kokoro-82M 
 
 Speak answers aloud using a resident local TTS daemon. Fully offline, no API keys.
 
+## TheTalker first
+
+TheTalker (the menu bar app in `/Applications`) is the primary engine. Whenever it
+is installed, `say.py` sends every line to its socket (`~/.thetalker/speak.sock`),
+opening the app in the background first if it isn't running. speakd (the Python
+daemon described below) is only the fallback when TheTalker isn't installed or
+won't start.
+
+What that means for the user:
+- Every spoken line lands in TheTalker's queue and **Speaking History**, so they can
+  replay, pause or skip it later, even if they weren't listening.
+- Lines wait while the user is dictating, and never overlap other speech.
+- If TheTalker's **Talking** switch is off, lines are saved to **Not Talked**
+  instead of playing; the user plays them later from the app.
+- Pause/resume is the ⏯ key, AirPods or Control Center, not Shift. `--stop` (and
+  `--mode off`) move the current and queued lines to Not Talked; nothing is lost.
+- Voice, tone, speed and output device come from TheTalker's Settings. `-p` is
+  ignored there; `-v` and `-s` still apply per line.
+
+`--status` says which engine is in use ("running in TheTalker"). The Shift, device
+blocklist and daemon sections below apply only to the speakd fallback.
+
 ## Activation state
 
 This skill is a **latching mode**, not a one-shot action. Turning it on once makes

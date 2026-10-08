@@ -14,6 +14,7 @@ Protocol: one JSON object per connection, newline terminated.
 
     -> {"cmd": "stop"}     interrupt whatever is playing
     -> {"cmd": "ping"}     readiness probe
+    -> {"cmd": "devices"}  usable output device names (blocked ones left out)
     -> {"cmd": "shutdown"} exit
 
 Run directly to start in the foreground; `say.py` starts it on demand.
@@ -97,19 +98,20 @@ class Speaker:
             except Exception:
                 pass
 
-    def _select_device(self) -> str:
+    def _select_device(self, prefer: str | None = None) -> str:
         """Re-scan outputs so a headset plugged in after boot is actually used."""
-        index, name = audio_out.resolve(self.device_pref)
+        index, name = audio_out.resolve(prefer or self.device_pref)
         if name != self._last_device:
             log(f"audio out: {name}")
             self._last_device = name
         return name
 
-    def speak(self, text: str, voice: str, preset: str, speed: float) -> dict:
+    def speak(self, text: str, voice: str, preset: str, speed: float,
+              device: str | None = None) -> dict:
         np = self._np
         with self.lock:
             self._cancel.clear()
-            self._select_device()
+            self._select_device(device)
             chunks = speak_mod.chunk_text(text)
             if not chunks:
                 return {"ok": True, "chunks": 0, "latency": 0.0}
@@ -227,9 +229,8 @@ def serve(speaker: Speaker, sock: socket.socket, stop_key: str | None = None) ->
             job = work.get()
             if job is None:
                 return
-            text, voice, preset, speed = job
             try:
-                speaker.speak(text, voice, preset, speed)
+                speaker.speak(*job)
             except Exception as exc:
                 log(f"speak failed: {exc}")
 
@@ -257,6 +258,11 @@ def serve(speaker: Speaker, sock: socket.socket, stop_key: str | None = None) ->
                 state["hotkey"] = stopper.status() if stopper else {"active": False}
                 conn.sendall((json.dumps(state) + "\n").encode())
                 continue
+            if cmd == "devices":
+                audio_out.refresh()
+                names = [n for _, n in audio_out.outputs() if not audio_out.is_blocked(n)]
+                conn.sendall((json.dumps({"ok": True, "devices": names}) + "\n").encode())
+                continue
             if cmd == "stop":
                 interrupt()
                 conn.sendall(b'{"ok": true, "stopped": true}\n')
@@ -270,16 +276,17 @@ def serve(speaker: Speaker, sock: socket.socket, stop_key: str | None = None) ->
             voice = req.get("voice") or speaker.voice
             preset = req.get("preset", speaker.preset)
             speed = float(req.get("speed") or 1.0)
+            device = req.get("device")  # name substring; None follows the speaker's default
 
             if not text:
                 conn.sendall(b'{"ok": false, "error": "empty text"}\n')
                 continue
 
             if req.get("wait"):
-                result = speaker.speak(text, voice, preset, speed)
+                result = speaker.speak(text, voice, preset, speed, device)
                 conn.sendall((json.dumps(result) + "\n").encode())
             else:
-                work.put((text, voice, preset, speed))
+                work.put((text, voice, preset, speed, device))
                 conn.sendall(b'{"ok": true, "queued": true}\n')
         except Exception as exc:
             log(f"request error: {exc}")

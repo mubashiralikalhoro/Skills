@@ -35,6 +35,10 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 RUNTIME_DIR = os.path.expanduser("~/.talk-to-me")
 SOCKET_PATH = os.path.join(RUNTIME_DIR, "speakd.sock")
+# TheTalker (menu bar app) speaks the same protocol natively, with a shared queue,
+# a hold while you dictate, and history. Used first; speakd is the fallback.
+THETALKER_SOCKET = os.path.expanduser("~/.thetalker/speak.sock")
+_chosen_socket: str | None = None
 LOG_PATH = os.path.join(RUNTIME_DIR, "speakd.log")
 MODE_DIR = os.path.join(RUNTIME_DIR, "modes")
 LEGACY_MODE_PATH = os.path.join(RUNTIME_DIR, "mode")
@@ -141,11 +145,44 @@ def set_all_modes_off() -> int:
     return count
 
 
-def _request(payload: dict, timeout: float = 600.0) -> dict | None:
+THETALKER_APPS = ["/Applications/TheTalker.app", os.path.expanduser("~/Applications/TheTalker.app")]
+
+
+def _thetalker_up(timeout: float = 1.0) -> bool:
+    return os.path.exists(THETALKER_SOCKET) and _request({"cmd": "ping"}, timeout, THETALKER_SOCKET) is not None
+
+
+def _socket_path() -> str:
+    """TheTalker whenever it's installed (opened in the background if needed), otherwise speakd.
+
+    Every line then lands in TheTalker's queue and Speaking History, so it can be
+    replayed, paused or held in Not Talked. Decided once per call of this script.
+    """
+    global _chosen_socket
+    if _chosen_socket is None:
+        _chosen_socket = SOCKET_PATH
+        if _thetalker_up():
+            _chosen_socket = THETALKER_SOCKET
+        elif any(os.path.exists(a) for a in THETALKER_APPS):
+            subprocess.run(["open", "-g", "-a", "TheTalker"], capture_output=True)
+            deadline = time.time() + 15
+            while time.time() < deadline:
+                if _thetalker_up():
+                    _chosen_socket = THETALKER_SOCKET
+                    break
+                time.sleep(0.25)
+    return _chosen_socket
+
+
+def using_thetalker() -> bool:
+    return _socket_path() == THETALKER_SOCKET
+
+
+def _request(payload: dict, timeout: float = 600.0, path: str | None = None) -> dict | None:
     try:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         sock.settimeout(timeout)
-        sock.connect(SOCKET_PATH)
+        sock.connect(path or _socket_path())
     except (FileNotFoundError, ConnectionRefusedError, socket.timeout, OSError):
         return None
 
@@ -301,6 +338,11 @@ def main() -> int:
         if reply is None:
             print("stopped")
             return 0
+        if using_thetalker():
+            state = "speaking" if reply.get("speaking") else "idle"
+            print(f"running in TheTalker ({state}) · talk mode: {'on' if mode_is_on() else 'off'}"
+                  f" · out: {reply.get('device') or 'system default'} · pause: ⏯ key / AirPods")
+            return 0
         hk = reply.get("hotkey") or {}
         state = "speaking" if reply.get("speaking") else "idle"
         mode = "on" if mode_is_on() else "off"
@@ -340,7 +382,8 @@ def main() -> int:
     if not ensure_daemon(args.quiet):
         return 1
 
-    payload = {"text": text, "wait": bool(args.wait)}
+    payload = {"text": text, "wait": bool(args.wait),
+               "source": "claude-code", "context": os.path.basename(os.getcwd())}
     if args.voice:
         payload["voice"] = args.voice
     if args.preset:
@@ -355,7 +398,9 @@ def main() -> int:
     if not reply.get("ok"):
         print(f"error: {reply.get('error')}", file=sys.stderr)
         return 1
-    if args.wait and not args.quiet:
+    if args.wait and not args.quiet and using_thetalker():
+        print(f"TheTalker: {reply.get('status')}", file=sys.stderr)
+    elif args.wait and not args.quiet:
         print(f"spoke {reply.get('chunks')} chunk(s), first audio {reply.get('latency')}s",
               file=sys.stderr)
     return 0
